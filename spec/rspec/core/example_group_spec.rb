@@ -1432,8 +1432,72 @@ module RSpec::Core
         end
       end
 
+      context "with fail_fast set to 'true' string" do
+        before { RSpec.configuration.fail_fast = 'true' }
+        let(:group) { RSpec.describe }
+        let(:reporter) { Reporter.new(RSpec.configuration) }
+
+        it "does not run examples after the failed example" do
+          examples_run = []
+          group().example('example 1') { examples_run << self }
+          group().example('example 2') { examples_run << self; fail; }
+          group().example('example 3') { examples_run << self }
+
+          group().run(reporter)
+
+          expect(examples_run.length).to eq(2)
+        end
+
+        it "sets RSpec.world.wants_to_quit flag if encountering an exception in before(:all)" do
+          group().before(:all) { raise "error in before all" }
+          group().example("equality") { expect(1).to eq(2) }
+          expect(group().run(reporter)).to be_falsey
+          expect(RSpec.world.wants_to_quit).to be_truthy
+        end
+      end
+
       context "with fail_fast set to 3" do
         before { RSpec.configuration.fail_fast = 3 }
+        let(:group) { RSpec.describe }
+        let(:reporter) { Reporter.new(RSpec.configuration) }
+
+        it "does not run examples after 3 failed examples" do
+          examples_run = []
+          group().example('example 1') { examples_run << self }
+          group().example('example 2') { examples_run << self; fail; }
+          group().example('example 3') { examples_run << self; fail; }
+          group().example('example 4') { examples_run << self; fail; }
+          group().example('example 5') { examples_run << self }
+
+          group().run(reporter)
+
+          expect(examples_run.length).to eq(4)
+        end
+
+        it "does not set RSpec.world.wants_to_quit flag if encountering an exception in before(:all) causing less than 3 failures" do
+          group().before(:all) { raise "error in before all" }
+          group().example("equality") { expect(1).to eq(2) }
+          group().example("equality") { expect(1).to eq(2) }
+
+          expect(group().run(reporter)).to be false
+
+          expect(RSpec.world.wants_to_quit).to be_falsey
+        end
+
+        it "sets RSpec.world.wants_to_quit flag if encountering an exception in before(:all) causing at least 3 failures" do
+          group().before(:all) { raise "error in before all" }
+          group().example("equality") { expect(1).to eq(1) }
+          group().example("equality") { expect(1).to eq(1) }
+          group().example("equality") { expect(1).to eq(1) }
+
+          expect(group().run(reporter)).to be false
+
+          expect(RSpec.world.wants_to_quit).to be true
+        end
+      end
+
+      context "with fail_fast set to '3' string" do
+        before { RSpec.configuration.fail_fast = '3' }
         let(:group) { RSpec.describe }
         let(:reporter) { Reporter.new(RSpec.configuration) }
 

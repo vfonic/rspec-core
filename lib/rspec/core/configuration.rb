@@ -202,10 +202,31 @@ module RSpec
         only_failures? && !example_status_persistence_file_path
       end
 
-      # @macro add_setting
+      # @macro define_reader
       # If specified, indicates the number of failures required before cleaning
-      # up and exit (default: `nil`).
-      add_setting :fail_fast
+      # up and exit (default: `nil`). Can also be `true` to fail on exit on first
+      # failure
+      define_reader :fail_fast
+
+      # @see fail_fast
+      def fail_fast=(value)
+        case value
+        when true, 'true'
+          @fail_fast = true
+        when false, 'false'
+          @fail_fast = false
+        when nil
+          @fail_fast = nil
+        else
+          if value.to_i == 0
+            raise ArgumentError, "Cannot set `RSpec.configuration.fail_fast`" \
+              " to `#{value.inspect}`. Only `true`, `false`, `nil` and integers" \
+              " are valid values."
+          end
+
+          @fail_fast = value.to_i
+        end
+      end
 
       # @macro add_setting
       # Prints the formatter output of your suite without running any
@@ -399,6 +420,7 @@ module RSpec
       # @overload shared_context_metadata_behavior=(value)
       #   @param value [:trigger_inclusion, :apply_to_host_groups] sets the configured behavior
       define_reader :shared_context_metadata_behavior
+
       # @see shared_context_metadata_behavior
       def shared_context_metadata_behavior=(value)
         case value
